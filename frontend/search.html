@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Workers - Local Link Services</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        violet: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            900: '#4c1d95',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f5f3ff; font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="antialiased font-sans">
+    <!-- Navbar (Simplified for internal pages) -->
+    <nav class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <a href="index.html" class="text-xl font-bold text-violet-600">Local Link</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="profile.html" class="text-gray-500 hover:text-gray-700 font-medium text-sm">My Profile</a>
+                    <a href="index.html" class="text-violet-600 hover:text-violet-900 font-medium text-sm">Home</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Find a Local Worker</h1>
+        
+        <!-- Search Controls -->
+        <div class="bg-white p-6 rounded-lg shadow-sm mb-8">
+            <form id="search-form" class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                    <label for="service-type" class="block text-sm font-medium text-gray-700">Service Type</label>
+                    <select id="service-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm rounded-md shadow-sm border">
+                        <option value="">Any Service</option>
+                        <option value="electrician">Electrician</option>
+                        <option value="plumber">Plumber</option>
+                        <option value="carpenter">Carpenter</option>
+                        <option value="cleaner">Cleaner</option>
+                        <option value="painter">Painter</option>
+                    </select>
+                </div>
+                <div class="flex-1">
+                    <label for="location" class="block text-sm font-medium text-gray-700">Location</label>
+                    <input type="text" id="location" placeholder="e.g. Hyderabad, Mumbai" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full md:w-auto bg-violet-600 border border-transparent rounded-md shadow-sm py-2 px-6 inline-flex justify-center text-sm font-medium text-white hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
+                        Search
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Worker Grid -->
+        <div id="workers-loading" class="text-center py-12 hidden">
+            <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-violet-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-2 text-gray-500">Loading workers...</p>
+        </div>
+        
+        <div id="workers-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Worker cards injected here via JS -->
+        </div>
+
+        <div id="workers-empty" class="text-center py-12 hidden bg-white rounded-lg shadow-sm">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No workers found</h3>
+            <p class="mt-1 text-sm text-gray-500">Try adjusting your search filters.</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { fetchWorkers } from './js/api.js';
+
+        const workerGrid = document.getElementById('workers-grid');
+        const loadingDiv = document.getElementById('workers-loading');
+        const emptyDiv = document.getElementById('workers-empty');
+
+        function createWorkerCard(worker) {
+            return `
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 transform hover:-translate-y-1 transition duration-200">
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="h-16 w-16 rounded-full bg-violet-100 flex items-center justify-center text-violet-600 text-xl font-bold uppercase">
+                                ${worker.name.charAt(0)}
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-medium text-gray-900">${worker.name}</h3>
+                                <p class="text-sm text-violet-600 font-medium capitalize">${worker.service_type}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <p class="text-sm text-gray-500 line-clamp-3">${worker.description || 'No description provided.'}</p>
+                        </div>
+                        <div class="mt-4 grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+                            <div>
+                                <p class="text-xs text-gray-500">Experience</p>
+                                <p class="text-sm font-medium text-gray-900">${worker.experience} Years</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Location</p>
+                                <p class="text-sm font-medium text-gray-900">${worker.location}</p>
+                            </div>
+                        </div>
+                        <div class="mt-6 flex gap-2">
+                            <a href="tel:${worker.phone}" class="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
+                                Call
+                            </a>
+                            <a href="chat.html?user_id=${worker.user_id}" class="w-full flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none">
+                                Message
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadWorkers(serviceType = '', location = '') {
+            workerGrid.innerHTML = '';
+            emptyDiv.classList.add('hidden');
+            loadingDiv.classList.remove('hidden');
+
+            try {
+                const workers = await fetchWorkers(serviceType, location);
+                loadingDiv.classList.add('hidden');
+                
+                if (workers.length === 0) {
+                    emptyDiv.classList.remove('hidden');
+                } else {
+                    workerGrid.innerHTML = workers.map(createWorkerCard).join('');
+                }
+            } catch(e) {
+                loadingDiv.classList.add('hidden');
+                emptyDiv.classList.remove('hidden');
+                console.error(e);
+            }
+        }
+
+        document.getElementById('search-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const type = document.getElementById('service-type').value;
+            const loc = document.getElementById('location').value;
+            loadWorkers(type, loc);
+        });
+
+        // Initial load
+        loadWorkers();
+    </script>
+</body>
+</html>

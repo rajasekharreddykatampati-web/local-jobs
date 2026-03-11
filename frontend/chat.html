@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - Local Link</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { colors: { violet: { 50: '#f5f3ff', 100: '#ede9fe', 500: '#8b5cf6', 600: '#7c3aed', 900: '#4c1d95'} } }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 flex flex-col min-h-screen font-sans">
+    <nav class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center">
+            <a href="index.html" class="text-xl font-bold text-violet-600">Local Link</a>
+            <a href="search.html" class="text-sm font-medium text-gray-600 hover:text-gray-900">Back to Search</a>
+        </div>
+    </nav>
+
+    <div class="flex-grow flex justify-center py-8 px-4 sm:px-6">
+        <div class="w-full max-w-2xl bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden h-[70vh]">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200 bg-violet-50 flex items-center">
+                <div class="h-10 w-10 rounded-full bg-violet-200 text-violet-700 flex items-center justify-center font-bold" id="chat-avatar">?</div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-900" id="chat-name">Loading...</p>
+                    <p class="text-xs text-gray-500" id="chat-service"></p>
+                </div>
+            </div>
+            
+            <!-- Messages Area -->
+            <div class="flex-grow p-6 overflow-y-auto bg-gray-50 flex flex-col space-y-4" id="messages-container">
+                <div class="text-center text-gray-400 text-sm py-4">Loading messages...</div>
+            </div>
+            
+            <!-- Input Area -->
+            <div class="px-6 py-4 border-t border-gray-200 bg-white">
+                <form id="chat-form" class="flex gap-2">
+                    <input type="text" id="msg-input" class="flex-grow border-0 focus:ring-0 focus:outline-none p-2 text-sm bg-gray-100 rounded-md" placeholder="Type your message..." required>
+                    <button type="submit" class="bg-violet-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 text-sm font-medium transition">
+                        Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { fetchChatHistory, sendMessage, fetchWorkerById, fetchUser } from './js/api.js';
+
+        let currentUser = null;
+        let otherUserId = null;
+        const msgContainer = document.getElementById('messages-container');
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            currentUser = await fetchUser();
+            if (!currentUser) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            otherUserId = urlParams.get('user_id');
+            
+            if (!otherUserId) {
+                msgContainer.innerHTML = "<div class='text-center text-red-500 mt-4'>No user specified to chat with.</div>";
+                return;
+            }
+
+            // Optional: load worker details if we know it's a worker (for avatar/name)
+            // Just assume they're a worker and try to fetch. If not, it falls back gracefully
+            const workerInfo = await fetchWorkerById(otherUserId);
+            if (workerInfo) {
+                document.getElementById('chat-name').innerText = workerInfo.name;
+                document.getElementById('chat-service').innerText = workerInfo.service_type || 'User';
+                document.getElementById('chat-avatar').innerText = workerInfo.name.charAt(0);
+            } else {
+                document.getElementById('chat-name').innerText = 'User ' + otherUserId;
+                document.getElementById('chat-avatar').innerText = 'U';
+            }
+
+            loadMessages();
+            // Polling for demo simplicity
+            setInterval(loadMessages, 5000);
+        });
+
+        async function loadMessages() {
+            if (!otherUserId) return;
+            const messages = await fetchChatHistory(otherUserId);
+            
+            if (messages.length === 0) {
+                msgContainer.innerHTML = "<div class='text-center text-gray-400 text-sm mt-4'>No messages yet. Say hi!</div>";
+                return;
+            }
+
+            const html = messages.map(msg => {
+                const isMine = msg.sender_id === currentUser.id;
+                return `
+                    <div class="flex ${isMine ? 'justify-end' : 'justify-start'}">
+                        <div class="max-w-xs md:max-w-md rounded-2xl px-4 py-2 ${isMine ? 'bg-violet-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-900 rounded-bl-none'}">
+                            <p class="text-sm">${msg.content}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            msgContainer.innerHTML = html;
+            msgContainer.scrollTop = msgContainer.scrollHeight;
+        }
+
+        document.getElementById('chat-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('msg-input');
+            const txt = input.value.trim();
+            if (!txt || !otherUserId) return;
+            
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            input.disabled = true;
+            
+            try {
+                await sendMessage(otherUserId, txt);
+                input.value = '';
+                await loadMessages();
+            } catch (err) {
+                alert("Failed to send message: " + err.message);
+            } finally {
+                btn.disabled = false;
+                input.disabled = false;
+                input.focus();
+            }
+        });
+    </script>
+</body>
+</html>

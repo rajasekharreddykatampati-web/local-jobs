@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Profile - Local Link</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        violet: { 50: '#f5f3ff', 100: '#ede9fe', 500: '#8b5cf6', 600: '#7c3aed', 900: '#4c1d95'}
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 font-sans antialiased min-h-screen">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center">
+            <a href="index.html" class="text-xl font-bold text-violet-600">Local Link</a>
+            <a href="search.html" class="text-sm font-medium text-gray-600 hover:text-gray-900">Find Workers</a>
+        </div>
+    </nav>
+
+    <div class="max-w-3xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+        <div class="bg-white shadow-sm rounded-lg overflow-hidden border border-gray-100">
+            <div class="px-4 py-5 sm:px-6 bg-violet-50">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Worker Profile Settings</h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">Set up your profile so customers can find you.</p>
+            </div>
+            <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+                <div id="status-message" class="hidden mb-4 p-4 rounded text-sm text-center"></div>
+                
+                <form id="profile-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Phone Number</label>
+                        <input type="tel" id="p-phone" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm">
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Service Type</label>
+                            <select id="p-service" required class="mt-1 block w-full pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm rounded-md shadow-sm border">
+                                <option value="electrician">Electrician</option>
+                                <option value="plumber">Plumber</option>
+                                <option value="carpenter">Carpenter</option>
+                                <option value="cleaner">Cleaner</option>
+                                <option value="painter">Painter</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Years of Experience</label>
+                            <input type="number" id="p-exp" min="0" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Location (City/Area)</label>
+                        <input type="text" id="p-loc" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">About / Description</label>
+                        <textarea id="p-desc" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm" placeholder="Tell customers about your skills..."></textarea>
+                    </div>
+
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" id="save-btn" class="bg-violet-600 border border-transparent rounded-md shadow-sm py-2 px-6 inline-flex justify-center text-sm font-medium text-white hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition">
+                            Save Profile
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { saveWorkerProfile, fetchUser } from './js/api.js';
+
+        // Check if logged in
+        document.addEventListener("DOMContentLoaded", async () => {
+            const user = await fetchUser();
+            if (!user) {
+                window.location.href = "login.html";
+            }
+        });
+
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('save-btn');
+            const statusMsg = document.getElementById('status-message');
+            
+            const profileData = {
+                phone: document.getElementById('p-phone').value,
+                service_type: document.getElementById('p-service').value,
+                experience: parseInt(document.getElementById('p-exp').value),
+                location: document.getElementById('p-loc').value,
+                description: document.getElementById('p-desc').value
+            };
+
+            btn.disabled = true;
+            btn.innerText = "Saving...";
+
+            try {
+                await saveWorkerProfile(profileData);
+                statusMsg.className = "mb-4 p-4 rounded text-sm text-center bg-green-100 text-green-700";
+                statusMsg.innerText = "Profile saved successfully! Waiting for Admin approval.";
+                statusMsg.classList.remove('hidden');
+                setTimeout(() => { window.location.href = "search.html"; }, 2000);
+            } catch (err) {
+                statusMsg.className = "mb-4 p-4 rounded text-sm text-center bg-red-100 text-red-700";
+                statusMsg.innerText = err.message || "Failed to save profile.";
+                statusMsg.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerText = "Save Profile";
+            }
+        });
+    </script>
+</body>
+</html>
